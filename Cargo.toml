@@ -1,0 +1,21 @@
+[package]
+name = "vocage"
+version = "1.1.0"
+authors = ["Maarten van Gompel <proycon@anaproy.nl>"]
+description = "A minimalistic terminal-based vocabulary learner or flashcard tool, using a spaced repetition algorithm."
+homepage = "https://github.com/proycon/vocage/"
+repository = "https://github.com/proycon/vocage"
+documentation = "https://docs.rs/vocage"
+categories = ["command-line-utilities","visualization"]
+keywords = ["flashcards","vocabulary-learning","language-learning","education"]
+license = "GPL-3.0+"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "2.33.1"
+rand = "0.7.3"
+chrono = "0.4.15"
+ansi_term = "0.12.1"
+termion = "1.5.5"

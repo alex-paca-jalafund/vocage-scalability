@@ -1,0 +1,1 @@
+/home/fundacion/Git-University-Projects/Scalability/vocage/target/debug/vocage: /home/fundacion/Git-University-Projects/Scalability/vocage/src/bin/vocage.rs /home/fundacion/Git-University-Projects/Scalability/vocage/src/lib.rs
