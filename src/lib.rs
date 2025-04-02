@@ -7,7 +7,7 @@ use ansi_term::Colour;
 use chrono::NaiveDateTime;
 use clap::{App, Arg};
 use rand::prelude::Rng;
-use std::fmt;
+use std::{fmt, process};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error, ErrorKind, Write};
 use std::path::PathBuf;
@@ -703,36 +703,41 @@ impl VocaCard {
     }
 }
 
-pub fn load_files(files: Vec<&str>, force: bool, reset: bool) -> Vec<VocaData> {
+pub fn load_files(files: Vec<&str>, force: bool, reset: bool, batch_size: usize) -> Vec<VocaData> {
     let mut datasets: Vec<VocaData> = Vec::new();
+    
+    // Process files by batch
+    let mut file_batches = files.chunks(batch_size);
 
-    for filename in files.iter() {
-        if !PathBuf::from(filename).exists() {
-            eprintln!("ERROR: Specified input file not does exist: {}", filename);
-            std::process::exit(1);
-        } else {
-            match VocaData::from_file(filename, reset) {
-                Ok(mut data) => {
-                    if !datasets.is_empty() {
-                        if data.session.columns != datasets[0].session.columns {
-                            eprintln!("ERROR: columns of {} differ from those in the first loaded file, unable to load together.", filename);
-                            std::process::exit(1);
-                        }
-                        if data.session.decks != datasets[0].session.decks {
-                            if force || data.session.decks.is_empty() {
-                                data.session.decks = datasets[0].session.decks.clone();
-                                data.session.intervals = datasets[0].session.intervals.clone();
-                            } else {
-                                eprintln!("ERROR: decks of {} differ from those in the first loaded file, refusing to load together (use --force to force it)", filename);
-                                std::process::exit(1);
+    while let Some(batch) = file_batches.next() {
+        for filename in batch {
+            if !PathBuf::from(filename).exists() {
+                eprintln!("ERROR: Specified input file does not exist: {}", filename);
+                process::exit(1);
+            } else {
+                match VocaData::from_file(filename, reset) {
+                    Ok(mut data) => {
+                        if !datasets.is_empty() {
+                            if data.session.columns != datasets[0].session.columns {
+                                eprintln!("ERROR: columns of {} differ from those in the first loaded file, unable to load together.", filename);
+                                process::exit(1);
+                            }
+                            if data.session.decks != datasets[0].session.decks {
+                                if force || data.session.decks.is_empty() {
+                                    data.session.decks = datasets[0].session.decks.clone();
+                                    data.session.intervals = datasets[0].session.intervals.clone();
+                                } else {
+                                    eprintln!("ERROR: decks of {} differ from those in the first loaded file, refusing to load together (use --force to force it)", filename);
+                                    process::exit(1);
+                                }
                             }
                         }
+                        datasets.push(data);
                     }
-                    datasets.push(data);
-                }
-                Err(err) => {
-                    eprintln!("ERROR loading {}: {}", filename, err);
-                    std::process::exit(1);
+                    Err(err) => {
+                        eprintln!("ERROR loading {}: {}", filename, err);
+                        process::exit(1);
+                    }
                 }
             }
         }
