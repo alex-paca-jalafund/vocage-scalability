@@ -4,6 +4,7 @@ extern crate termion;
 extern crate chrono;
 extern crate vocage;
 
+use sqlx::pool;
 use termion::event::Key;
 use termion::screen::AlternateScreen;
 use termion::input::TermRead;
@@ -13,10 +14,14 @@ use std::io::{Write, stdout, stdin};
 use clap::{Arg, App};
 use rand::prelude::{thread_rng,Rng};
 use vocage::{VocaSession,VocaCard,PrintFormat,load_files};
+use sqlx::{PgPool, postgres::PgPoolOptions};
+use dotenv::dotenv;
+use std::env;
 
 static NUMCHARS: &[char] = &['1','2','3','4','5','6','7','8','9'];
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = App::new("Vocage :: Flash cards")
                   .version("1.0")
                   .author("Maarten van Gompel (proycon) <proycon@anaproy.nl>")
@@ -78,8 +83,6 @@ fn main() {
                     .help("Reset the loaded deck, this strips the due date and deck assignment of all cards")
                    )
                   .get_matches();
-
-
                   let mut rng = thread_rng();
 
                   // batch size 5
@@ -152,8 +155,17 @@ fn main() {
 
     //make a copy to prevent problems with the borrow checker
     let session = datasets[0].session.clone();
-
+    let mut connection : bool = false;
     while !done {
+        if connection == false {
+            match connect_db().await {
+                Ok(pool) => {
+                    println!("📡 Database connection ready");
+                    connection = true
+                }
+                Err(err) => eprintln!("❌ Error connecting the database: {:?}", err),
+            }
+        }
         if changed {
             reset = false;
         }
@@ -337,9 +349,23 @@ fn main() {
     write!(stdout,"{}\n",termion::cursor::Show).expect("error drawing");
 }
 
+pub async fn connect_db() -> Result<PgPool, sqlx::Error> {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL no está en .env");
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await?;
+
+    println!("✅ Conectado a la base de datos");
+
+    Ok(pool)
+}
 
 pub fn draw(stdout: &mut impl Write, card: Option<&VocaCard>, session: &VocaSession, side: u8, status: &str, seqnr: usize, duecards: usize, minimal: Option<PrintFormat>) {
-
+    
     let mut stdout = AlternateScreen::from(stdout);
 
     let (width, height) = if minimal.is_none() {
