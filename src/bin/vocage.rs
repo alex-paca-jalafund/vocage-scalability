@@ -80,27 +80,47 @@ fn main() {
                   .get_matches();
 
 
-    let mut rng = thread_rng();
+                  let mut rng = thread_rng();
 
-    let mut datasets = load_files(args.values_of("files").unwrap().collect(), args.is_present("force"), args.is_present("reset"));
-    for dataset in datasets.iter_mut() {
-        dataset.session.set_common_arguments(&args).expect("setting common arguments");
-        if dataset.session.decks.is_empty() && dataset.session.intervals.is_empty() {
-            //no decks or intervals defined yet, set some defaults
-            dataset.session.decks = vec!("immediate","daily","weekly","monthly","quarterly","yearly").iter().map(|s| s.to_string()).collect();
-            dataset.session.intervals = vec!(0,1440,10080,43200,129600,518400);
-        }
-    }
-
-    let limit_decks: Option<Vec<u8>> = if args.is_present("limit") {
-        Some(vec!(datasets[0].session.get_deck_by_name(args.value_of("limit").unwrap()).unwrap()))
-    } else if args.is_present("firstdeck") || args.is_present("lastdeck") {
-        let firstdeck: u8 = args.value_of("firstdeck").map(|s| s.parse::<u8>().expect("expecting an integer")  - 1).unwrap_or(0);
-        let lastdeck: u8 = args.value_of("lastdeck").map(|s| s.parse::<u8>().expect("expecting an integer") ).unwrap_or(255);
-        Some((firstdeck..lastdeck).collect())
-    } else {
-        None
-    };
+                  // batch size 5
+                  let batch_size = 5;
+              
+                  // load files by batch
+                  let mut datasets = load_files(
+                      args.values_of("files").unwrap().collect(),
+                      args.is_present("force"),
+                      args.is_present("reset"),
+                      batch_size,
+                  );
+              
+                  // Process dataset in batch
+                  for dataset in datasets.iter_mut() {
+                      dataset.session.set_common_arguments(&args).expect("setting common arguments");
+                      
+                      if dataset.session.decks.is_empty() && dataset.session.intervals.is_empty() {
+                          dataset.session.decks = vec![
+                              "immediate", "daily", "weekly", "monthly", "quarterly", "yearly"
+                          ]
+                          .iter()
+                          .map(|s| s.to_string())
+                          .collect();
+                          dataset.session.intervals = vec![0, 1440, 10080, 43200, 129600, 518400];
+                      }
+                  }
+              
+                  let limit_decks: Option<Vec<u8>> = if args.is_present("limit") {
+                      Some(vec!(datasets[0].session.get_deck_by_name(args.value_of("limit").unwrap()).unwrap()))
+                  } else if args.is_present("firstdeck") || args.is_present("lastdeck") {
+                      let firstdeck: u8 = args.value_of("firstdeck")
+                          .map(|s| s.parse::<u8>().expect("expecting an integer") - 1)
+                          .unwrap_or(0);
+                      let lastdeck: u8 = args.value_of("lastdeck")
+                          .map(|s| s.parse::<u8>().expect("expecting an integer"))
+                          .unwrap_or(255);
+                      Some((firstdeck..lastdeck).collect())
+                  } else {
+                      None
+                  };
     let mut due_only: bool = !args.is_present("all");
     let mut seen_only: bool = args.is_present("seen");
     let mut ordered: bool = args.is_present("ordered");
